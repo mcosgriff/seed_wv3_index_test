@@ -11,7 +11,7 @@ def run(args: argparse.Namespace) -> None:
 
 
 def build_cmd_line_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description='Create a CSV file listing gdal supported files to build mosaic.')
+    parser = argparse.ArgumentParser(description='Load WV3 16 band image and run index on it.')
     parser.add_argument('--verbose', help='Output extra logging at DEBUG level', action='store_true')
     parser.add_argument('--index', help='Which index to run on the WV3 image', required=True,
                         choices=['NORMALIZED_DIFFERENTIAL_VEGETATION', 'WORLD_VIEW_WATER', 'POLYMER_1', 'POLYMER_2',
