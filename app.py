@@ -1,11 +1,33 @@
 from algorithms import Index, process_image
+import argparse
+import logging
 
 
-def run() -> None:
+def run(args: argparse.Namespace) -> None:
     filename = '/Users/mcosgriff/Downloads/18FEB23084801-A3DS-057798936010_cal_2016v0_scube_native.tif'
 
-    process_image(Index.WORLD_VIEW_WATER_INDEX, filename)
+    output = process_image(Index[args.index], args.image_path)
+    print('Processed file saved to {}'.format(output))
+
+
+def build_cmd_line_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description='Create a CSV file listing gdal supported files to build mosaic.')
+    parser.add_argument('--verbose', help='Output extra logging at DEBUG level', action='store_true')
+    parser.add_argument('--index', help='Which index to run on the WV3 image', required=True,
+                        choices=['NORMALIZED_DIFFERENTIAL_VEGETATION', 'WORLD_VIEW_WATER', 'POLYMER_1', 'POLYMER_2',
+                                 'SOIL', 'BUILT_UP'])
+    parser.add_argument('--image-path', help='Path to WV3 16 band image', required=True, type=str)
+
+    return parser.parse_args()
 
 
 if __name__ == '__main__':
-    run()
+    _args = build_cmd_line_args()
+
+    if _args.verbose:
+        logging.basicConfig(level=logging.DEBUG, format="%(threadName)s::%(asctime)s::%(message)s")
+    else:
+        logging.basicConfig(level=logging.INFO, format="%(threadName)s::%(asctime)s::%(message)s")
+    logger = logging.getLogger('wv3_index_processing')
+
+    run(_args)
