@@ -136,15 +136,15 @@ def world_view_water_index(wv3_file: str) -> str:
     :return: Processed filename
     """
     with rasterio.open(wv3_file, mode='r', driver='GTiff') as raster:
-        coastal = raster.read(BandTable.COASTAL.value)
-        nir = raster.read(BandTable.NEAR_INFRARED_2.value)
+        band_1 = raster.read(BandTable.COASTAL.value)
+        band_8 = raster.read(BandTable.NEAR_INFRARED_2.value)
 
-        coastal_values = coastal.astype('float32')
-        nir_values = nir.astype('float32')
+        band_1_values = band_1.astype('float32')
+        band_8_values = band_8.astype('float32')
 
         np.seterr(divide='ignore', invalid='ignore')
-        check = np.logical_or(coastal_values > 0, nir_values > 0)
-        output_ds = np.where(check, (nir_values - coastal_values) / (nir_values + coastal_values), -9)
+        check = np.logical_or(band_1_values > 0, band_8_values > 0)
+        output_ds = np.where(check, (band_8_values - band_1_values) / (band_8_values + band_1_values), -9)
 
         return save_output(wv3_file, 'wv_water_index', build_output_profile(raster), output_ds)
 
