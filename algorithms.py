@@ -46,11 +46,8 @@ def built_up_index(wv3_file: str) -> str:
     :return: Processed filename
     """
     with rasterio.open(wv3_file, mode='r', driver='GTiff') as raster:
-        band_1 = raster.read(BandTable.COASTAL.value)
-        band_6 = raster.read(BandTable.RED_EDGE.value)
-
-        band_1_values = band_1.astype('float32')
-        band_6_values = band_6.astype('float32')
+        band_1_values = get_band_pixel_values(raster, BandTable.COASTAL)
+        band_6_values = get_band_pixel_values(raster, BandTable.RED_EDGE)
 
         np.seterr(divide='ignore', invalid='ignore')
         check = np.logical_or(band_1_values > 0, band_6_values > 0)
@@ -66,11 +63,8 @@ def soil_index(wv3_file: str) -> str:
     :return: Processed filename
     """
     with rasterio.open(wv3_file, mode='r', driver='GTiff') as raster:
-        band_3 = raster.read(BandTable.GREEN.value)
-        band_4 = raster.read(BandTable.YELLOW.value)
-
-        band_3_values = band_3.astype('float32')
-        band_4_values = band_4.astype('float32')
+        band_3_values = get_band_pixel_values(raster, BandTable.GREEN)
+        band_4_values = get_band_pixel_values(raster, BandTable.YELLOW)
 
         np.seterr(divide='ignore', invalid='ignore')
         check = np.logical_or(band_3_values > 0, band_4_values > 0)
@@ -86,15 +80,10 @@ def polymer_1_index(wv3_file: str) -> str:
     :return: Processed filename
     """
     with rasterio.open(wv3_file, mode='r', driver='GTiff') as raster:
-        band_10 = raster.read(BandTable.SWIR_2.value)
-        band_12 = raster.read(BandTable.SWIR_4.value)
-        band_13 = raster.read(BandTable.SWIR_2.value)
-        band_16 = raster.read(BandTable.SWIR_4.value)
-
-        band_10_values = band_10.astype('float32')
-        band_12_values = band_12.astype('float32')
-        band_13_values = band_13.astype('float32')
-        band_16_values = band_16.astype('float32')
+        band_10_values = get_band_pixel_values(raster, BandTable.SWIR_2)
+        band_12_values = get_band_pixel_values(raster, BandTable.SWIR_4)
+        band_13_values = get_band_pixel_values(raster, BandTable.SWIR_5)
+        band_16_values = get_band_pixel_values(raster, BandTable.SWIR_8)
 
         np.seterr(divide='ignore', invalid='ignore')
         check = np.logical_or(np.logical_or(band_10_values > 0, band_12_values > 0),
@@ -111,15 +100,10 @@ def polymer_2_index(wv3_file: str) -> str:
     :return: Processed filename
     """
     with rasterio.open(wv3_file, mode='r', driver='GTiff') as raster:
-        band_10 = raster.read(BandTable.SWIR_2.value)
-        band_11 = raster.read(BandTable.SWIR_3.value)
-        band_14 = raster.read(BandTable.SWIR_6.value)
-        band_16 = raster.read(BandTable.SWIR_8.value)
-
-        band_10_values = band_10.astype('float32')
-        band_11_values = band_11.astype('float32')
-        band_14_values = band_14.astype('float32')
-        band_16_values = band_16.astype('float32')
+        band_10_values = get_band_pixel_values(raster, BandTable.SWIR_2)
+        band_11_values = get_band_pixel_values(raster, BandTable.SWIR_3)
+        band_14_values = get_band_pixel_values(raster, BandTable.SWIR_6)
+        band_16_values = get_band_pixel_values(raster, BandTable.SWIR_8)
 
         np.seterr(divide='ignore', invalid='ignore')
         check = np.logical_or(np.logical_or(band_10_values > 0, band_11_values > 0),
@@ -136,11 +120,8 @@ def world_view_water_index(wv3_file: str) -> str:
     :return: Processed filename
     """
     with rasterio.open(wv3_file, mode='r', driver='GTiff') as raster:
-        band_1 = raster.read(BandTable.COASTAL.value)
-        band_8 = raster.read(BandTable.NEAR_INFRARED_2.value)
-
-        band_1_values = band_1.astype('float32')
-        band_8_values = band_8.astype('float32')
+        band_1_values = get_band_pixel_values(raster, BandTable.COASTAL)
+        band_8_values = get_band_pixel_values(raster, BandTable.NEAR_INFRARED_2)
 
         np.seterr(divide='ignore', invalid='ignore')
         check = np.logical_or(band_1_values > 0, band_8_values > 0)
@@ -150,7 +131,7 @@ def world_view_water_index(wv3_file: str) -> str:
 
 
 def save_output(wv3_file: str, postfix: str, profile: property, output_ds: np.ndarray) -> str:
-    with rasterio.open(os.path.splitext(wv3_file)[0] + '_{}_.tif'.format(postfix), mode='w', **profile) as output:
+    with rasterio.open(os.path.splitext(wv3_file)[0] + '_{}.tif'.format(postfix), mode='w', **profile) as output:
         output.write(output_ds, 1)
 
         return output.name
@@ -163,17 +144,20 @@ def normalized_differential_vegetation_index(wv3_file: str) -> str:
     :return: Processed filename
     """
     with rasterio.open(wv3_file, mode='r', driver='GTiff') as raster:
-        red = raster.read(BandTable.RED.value)
-        nir = raster.read(BandTable.NEAR_INFRARED_1.value)
-
-        red_values = red.astype('float32')
-        nir_values = nir.astype('float32')
+        red_values = get_band_pixel_values(raster, BandTable.RED)
+        nir_values = get_band_pixel_values(raster, BandTable.NEAR_INFRARED_1)
 
         np.seterr(divide='ignore', invalid='ignore')
         check = np.logical_or(red_values > 0, nir_values > 0)
         output_ds = np.where(check, (nir_values - red_values) / (nir_values + red_values), -9)
 
         return save_output(wv3_file, 'ndvi', build_output_profile(raster), output_ds)
+
+
+def get_band_pixel_values(raster: rasterio.DatasetReader, which_band: BandTable,
+                          array_type: str = 'float32') -> np.ndarray:
+    band = raster.read(which_band.value)
+    return band.astype(array_type)
 
 
 def build_output_profile(raster: rasterio.DatasetReader) -> property:
