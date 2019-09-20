@@ -6,7 +6,7 @@ import logging
 def run(args: argparse.Namespace) -> None:
     filename = '/Users/mcosgriff/Downloads/18FEB23084801-A3DS-057798936010_cal_2016v0_scube_native.tif'
 
-    output = process_image(Index[args.index], args.image_path)
+    output = process_image(Index[args.index], args.image_path, logger)
     print('Processed file saved to {}'.format(output))
 
 
@@ -14,8 +14,8 @@ def build_cmd_line_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description='Load WV3 16 band image and run index on it.')
     parser.add_argument('--verbose', help='Output extra logging at DEBUG level', action='store_true')
     parser.add_argument('--index', help='Which index to run on the WV3 image', required=True,
-                        choices=['NORMALIZED_DIFFERENTIAL_VEGETATION', 'WORLD_VIEW_WATER', 'POLYMER_1', 'POLYMER_2',
-                                 'SOIL', 'BUILT_UP'])
+                        choices=['NDVI', 'WORLD_VIEW_WATER', 'POLYMER_1', 'POLYMER_2',
+                                 'SOIL', 'BUILT_UP', 'NDVI_RE'])
     parser.add_argument('--image-path', help='Path to WV3 16 band image', required=True, type=str)
 
     return parser.parse_args()
