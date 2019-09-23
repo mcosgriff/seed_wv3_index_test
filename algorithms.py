@@ -1,4 +1,5 @@
 import logging
+import math
 import os
 from enum import Enum
 
@@ -52,12 +53,10 @@ def built_up_index(wv3_file: str) -> str:
         band_6 = get_band_pixel_values(raster, BandTable.RED_EDGE)
 
         np.seterr(divide='ignore', invalid='ignore')
-        first = np.subtract(band_1, band_6)
-        second = np.add(band_1, band_6)
+        ds_temp_1 = np.subtract(band_1, band_6)
+        ds_temp_2 = np.add(band_1, band_6)
 
-        check = np.logical_or(first > 0, band_6 > 0)
-        # output_ds = np.where(check, (band_6_values - band_1_values) / (band_6_values + band_1_values), -9)
-        output_ds = np.where(check, np.divide(first, second), -9)
+        output_ds = np.where(ds_temp_2 > 0, np.divide(ds_temp_1, ds_temp_2), float('nan'))
 
         return save_output(wv3_file, 'built_up_index', build_output_profile(raster), output_ds)
 
@@ -73,8 +72,12 @@ def soil_index(wv3_file: str) -> str:
         band_4 = get_band_pixel_values(raster, BandTable.YELLOW)
 
         np.seterr(divide='ignore', invalid='ignore')
+
+        temp_ds_1 = np.subtract(band_4, band_3)
+        temp_ds_2 = np.add(band_4, band_3)
+
         check = np.logical_or(band_3 > 0, band_4 > 0)
-        output_ds = np.where(check, (band_4 - band_3) / (band_4 + band_3), -9)
+        output_ds = np.where(temp_ds_2 > 0, np.divide(temp_ds_1, temp_ds_2), math.nan)
 
         return save_output(wv3_file, 'soil_index', build_output_profile(raster), output_ds)
 
@@ -92,46 +95,13 @@ def polymer_1_index(wv3_file: str) -> str:
         band_16 = get_band_pixel_values(raster, BandTable.SWIR_8)
 
         np.seterr(divide='ignore', invalid='ignore')
-        # check = np.logical_or(np.logical_or(band_10_values > 0, band_12_values > 0),
-        # np.logical_or(band_13_values > 0, band_16_values > 0))
-        # check = np.logical_and(band_12_values > 0, band_16_values > 0)
-        # output_ds = np.where(check, (band_10_values / band_12_values) + (band_13_values / band_16_values), float(-9))
-        # output_ds = ((band_10_values / band_12_values) + (band_13_values / band_16_values))
 
-        # masked_output_ds = np.ma.masked_equal(output_ds, float(-9))
+        temp_ds_1 = np.where(band_12 > 0, np.divide(band_10, band_12), np.nan)
+        temp_ds_2 = np.where(band_16 > 0, np.divide(band_13, band_16), np.nan)
 
-        check_1 = np.logical_or(band_10 > 0, band_12 > 0)
-        check_2 = np.logical_or(band_13 > 0, band_16 > 0)
+        check = np.logical_or(temp_ds_1 != np.nan, temp_ds_2 != np.nan)
 
-        temp_ds_1 = np.where(check_1, band_10 / band_12, -9)
-        temp_ds_2 = np.where(check_2, band_13 / band_16, -9)
-
-        check_3 = np.logical_or(temp_ds_1 == -9, temp_ds_2 == -9)
-
-        output_ds = np.where(check_3, temp_ds_1 + temp_ds_2, -9)
-
-        # unique, counts = np.unique(output_ds, return_counts=True)
-        # unique_counts = dict(zip(unique, counts))
-
-        # logging.debug('Unique counts = {}'.format(unique_counts))
-        # hist, bin_edges = np.histogram(output_ds)
-        # width = 0.7 * (bin_edges[1] - bin_edges[0])
-        # center = (bin_edges[:-1] + bin_edges[1:]) / 2
-
-        # fig, ax = plt.subplots()
-        # ax.bar(bin_edges, hist, width=np.diff(bin_edges), ec="k", align='edge')
-
-        # plt.hist(x=hist, bins=bin_edges[:-1], density=False, histtype='bar', color='b', edgecolor='k', alpha=0.5)
-        # plt.line(center, hist, align='center', width=width)
-        # plt.hist(bin_edges, bins=50)
-        # max_freq = hist.max()
-        # plt.ylim(ymax=np.ceil(max_freq/10) * 10 if max_freq % 10 else max_freq + 10)
-        # plt.xlabel('Pixel Value')
-        # plt.xticks(bin_edges[:-1])
-        # plt.ylabel('Occurances')
-        # plt.title('Pixel Count for Index')
-
-        # plt.show()
+        output_ds = np.where(check, temp_ds_1 + temp_ds_2, np.nan)
 
         return save_output(wv3_file, 'polymer_1_index', build_output_profile(raster), output_ds)
 
@@ -174,10 +144,41 @@ def world_view_water_index(wv3_file: str) -> str:
 
 
 def save_output(wv3_file: str, postfix: str, profile: property, output_ds: np.ndarray) -> str:
+    equalized = linear_percent_stretch(output_ds)
+
     with rasterio.open(os.path.splitext(wv3_file)[0] + '_{}.tif'.format(postfix), mode='w', **profile) as output:
-        output.write(output_ds, 1)
+        output.write(equalized, 1)
 
         return output.name
+
+
+def linear_percent_stretch(image: np.ndarray, percent=2) -> np.ndarray:
+    std_dev = np.nanstd(image)
+    mean = np.nanmean(image)
+
+    low_cutoff = std_dev - (math.fabs(mean) * percent)
+    high_cutoff = std_dev + (math.fabs(mean) * percent)
+
+    image[image > high_cutoff] = np.nan
+    image[image < low_cutoff] = np.nan
+
+    return image
+
+
+def image_histogram_equalization(image: np.ndarray, number_bins=256):
+    # from http://www.janeriksolem.net/2009/06/histogram-equalization-with-python-and.html
+    # from https://stackoverflow.com/a/28520445
+
+    # get image histogram
+    image_histogram, bins = np.histogram(image.flatten(), number_bins, density=True,
+                                         range=(np.nanmin(image), np.nanmax(image)))
+    cdf = image_histogram.cumsum()  # cumulative distribution function
+    cdf = 255 * cdf / cdf[-1]  # normalize , [-1] returns only the last element in the array
+
+    # use linear interpolation of cdf to find new pixel values
+    image_equalized = np.interp(image.flatten(), bins[:-1], cdf)  # [:-1] returns all elements except the last one
+
+    return image_equalized.reshape(image.shape).astype("float32"), cdf
 
 
 def normalized_differential_vegetation_index(wv3_file: str) -> str:
@@ -191,11 +192,11 @@ def normalized_differential_vegetation_index(wv3_file: str) -> str:
         band_7 = get_band_pixel_values(raster, BandTable.NEAR_INFRARED_1)
 
         np.seterr(divide='ignore', invalid='ignore')
-        first = np.subtract(band_7, band_5)
-        second = np.add(band_7, band_5)
+        temp_ds_1 = np.subtract(band_7, band_5)
+        temp_ds_2 = np.add(band_7, band_5)
 
-        check = np.logical_or(first > 0, second > 0)
-        output_ds = np.where(check, np.divide(first, second), -9)
+        check = np.logical_or(temp_ds_1 > 0, temp_ds_2 > 0)
+        output_ds = np.where(temp_ds_2 > 0, np.divide(temp_ds_1, temp_ds_2), math.nan)
 
         return save_output(wv3_file, 'ndvi', build_output_profile(raster), output_ds)
 
@@ -211,11 +212,11 @@ def normalized_differential_vegetation_red_edge_index(wv3_file: str) -> str:
         band_6 = get_band_pixel_values(raster, BandTable.RED_EDGE)
 
         np.seterr(divide='ignore', invalid='ignore')
-        first = np.subtract(band_6, band_5)
-        second = np.add(band_6, band_5)
+        temp_ds_1 = np.subtract(band_6, band_5)
+        temp_ds_2 = np.add(band_6, band_5)
 
-        check = np.logical_or(first > 0, second > 0)
-        output_ds = np.where(check, np.divide(first, second), -9)
+        check = np.logical_or(temp_ds_1 > 0, temp_ds_2 > 0)
+        output_ds = np.where(temp_ds_2 > 0, np.divide(temp_ds_1, temp_ds_2), math.nan)
 
         return save_output(wv3_file, 'ndvi_re', build_output_profile(raster), output_ds)
 
@@ -228,7 +229,7 @@ def get_band_pixel_values(raster: rasterio.DatasetReader, which_band: BandTable,
 
 def build_output_profile(raster: rasterio.DatasetReader) -> property:
     profile = raster.profile
-    profile.update(count=1, dtype=rasterio.float32, compress=Compression.deflate.value)
+    profile.update(count=1, dtype=rasterio.float32, compress=Compression.packbits.value)
 
     return profile
 
@@ -244,5 +245,5 @@ def divide_ndarray_values(first: np.ndarray, second: np.ndarray) -> np.ndarray:
 def process_image(which_algorithm: Index, wv3_file: str, _logger: logging.Logger) -> str:
     logger = _logger
 
-    logging.info('Runing {} on {}'.format(which_algorithm.name, wv3_file))
+    logger.info('Running {} on {}'.format(which_algorithm.name, wv3_file))
     return eval(which_algorithm.value.format(wv3_file))
