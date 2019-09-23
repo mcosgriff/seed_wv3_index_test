@@ -73,13 +73,9 @@ def soil_index(wv3_file: str) -> str:
 
         np.seterr(divide='ignore', invalid='ignore')
 
-        temp_ds_1 = np.subtract(band_4, band_3)
-        temp_ds_2 = np.add(band_4, band_3)
+        output_ds = np.divide(np.subtract(band_4, band_3), np.add(band_4, band_3))
 
-        check = np.logical_or(band_3 > 0, band_4 > 0)
-        output_ds = np.where(temp_ds_2 > 0, np.divide(temp_ds_1, temp_ds_2), math.nan)
-
-        return save_output(wv3_file, 'soil_index', build_output_profile(raster), output_ds)
+        return save_output(wv3_file, 'soil_index', build_output_profile(raster), linear_percent_stretch(output_ds))
 
 
 def polymer_1_index(wv3_file: str) -> str:
@@ -144,23 +140,37 @@ def world_view_water_index(wv3_file: str) -> str:
 
 
 def save_output(wv3_file: str, postfix: str, profile: property, output_ds: np.ndarray) -> str:
-    equalized = linear_percent_stretch(output_ds)
-
     with rasterio.open(os.path.splitext(wv3_file)[0] + '_{}.tif'.format(postfix), mode='w', **profile) as output:
-        output.write(equalized, 1)
+        output.write(output_ds, 1)
 
         return output.name
 
 
 def linear_percent_stretch(image: np.ndarray, percent=2) -> np.ndarray:
+    """
+    A linear percent stretch allows you to trim extreme values from both ends of the histogram using a specified
+    percentage.
+    :param image:
+    :param percent:
+    :return:
+    """
     std_dev = np.nanstd(image)
     mean = np.nanmean(image)
+
+    logging.getLogger('wv3_index_processing').info(
+        'Before liner percent stretch: stddev={}, mean={}, min={}, max={}'.format(std_dev, mean, np.nanmin(image),
+                                                                                  np.nanmax(image)))
 
     low_cutoff = std_dev - (math.fabs(mean) * percent)
     high_cutoff = std_dev + (math.fabs(mean) * percent)
 
     image[image > high_cutoff] = np.nan
     image[image < low_cutoff] = np.nan
+
+    logging.getLogger('wv3_index_processing').info(
+        'After liner percent stretch: stddev={}, mean={}, min={}, max={}'.format(np.nanstd(image), np.nanmean(image),
+                                                                                 np.nanmin(image),
+                                                                                 np.nanmax(image)))
 
     return image
 
@@ -234,16 +244,6 @@ def build_output_profile(raster: rasterio.DatasetReader) -> property:
     return profile
 
 
-def add_ndarray_values(first: np.ndarray, second: np.ndarray) -> np.ndarray:
-    return np.add(first, second)
-
-
-def divide_ndarray_values(first: np.ndarray, second: np.ndarray) -> np.ndarray:
-    np.divide(first, second)
-
-
-def process_image(which_algorithm: Index, wv3_file: str, _logger: logging.Logger) -> str:
-    logger = _logger
-
-    logger.info('Running {} on {}'.format(which_algorithm.name, wv3_file))
+def process_image(which_algorithm: Index, wv3_file: str) -> str:
+    logging.getLogger('wv3_index_processing').info('Running {} on {}'.format(which_algorithm.name, wv3_file))
     return eval(which_algorithm.value.format(wv3_file))

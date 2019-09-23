@@ -4,10 +4,8 @@ import logging
 
 
 def run(args: argparse.Namespace) -> None:
-    filename = '/Users/mcosgriff/Downloads/18FEB23084801-A3DS-057798936010_cal_2016v0_scube_native.tif'
-
-    output = process_image(Index[args.index], args.image_path, logger)
-    print('Processed file saved to {}'.format(output))
+    output = process_image(Index[args.index], args.image_path)
+    logging.info('Processed file saved to {}'.format(output))
 
 
 def build_cmd_line_args() -> argparse.Namespace:
