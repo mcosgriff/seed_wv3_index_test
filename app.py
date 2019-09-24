@@ -33,8 +33,13 @@ def run(args: argparse.Namespace) -> None:
 
     if index:
         with index:
-            output = index.process_index()
-            logging.info('Processed file saved to {}'.format(output))
+            indexed_raster, stretched_raster = index.process_index()
+
+            if stretched_raster.size > 0:
+                # index.build_histogram(raster=stretched_raster)
+                saved_to = index.save_output(raster=stretched_raster)
+
+                logging.info('Processed file saved to {}'.format(saved_to))
 
 
 def build_cmd_line_args() -> argparse.Namespace:
