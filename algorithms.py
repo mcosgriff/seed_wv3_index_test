@@ -115,11 +115,9 @@ def polymer_2_index(wv3_file: str) -> str:
         band_16 = get_band_pixel_values(raster, BandTable.SWIR_8)
 
         np.seterr(divide='ignore', invalid='ignore')
-        check = np.logical_or(np.logical_or(band_10 > 0, band_11 > 0),
-                              np.logical_or(band_14 > 0, band_16 > 0))
-        output_ds = np.where(check, ((band_10 / band_11) + (band_14 / band_16)), -9)
+        output_ds = np.add(np.divide(band_10, band_11), np.divide(band_14, band_16))
 
-        return save_output(wv3_file, 'polymer_2_index', build_output_profile(raster), output_ds)
+        return save_output(wv3_file, 'polymer_2_index', build_output_profile(raster), linear_percent_stretch(output_ds))
 
 
 def world_view_water_index(wv3_file: str) -> str:
