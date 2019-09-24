@@ -30,3 +30,25 @@ def linear_percent_stretch(image: np.ndarray, percent=2) -> np.ndarray:
                                                                                  np.nanmax(image)))
 
     return image
+
+
+def image_histogram_equalization(image: np.ndarray, number_bins=256):
+    """
+
+    :param image:
+    :param number_bins:
+    :return:
+    """
+    # from http://www.janeriksolem.net/2009/06/histogram-equalization-with-python-and.html
+    # from https://stackoverflow.com/a/28520445
+
+    # get image histogram
+    image_histogram, bins = np.histogram(image.flatten(), number_bins, density=True,
+                                         range=(np.nanmin(image), np.nanmax(image)))
+    cdf = image_histogram.cumsum()  # cumulative distribution function
+    cdf = 255 * cdf / cdf[-1]  # normalize , [-1] returns only the last element in the array
+
+    # use linear interpolation of cdf to find new pixel values
+    image_equalized = np.interp(image.flatten(), bins[:-1], cdf)  # [:-1] returns all elements except the last one
+
+    return image_equalized.reshape(image.shape).astype("float32"), cdf
