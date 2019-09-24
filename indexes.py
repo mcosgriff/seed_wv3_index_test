@@ -7,7 +7,7 @@ import rasterio
 from rasterio.enums import Compression
 from scipy.stats import norm
 import logging
-
+from scipy.interpolate import make_interp_spline, BSpline
 from enums import BandTable, StretchTypes
 from stretch_types import linear_percent_stretch, image_histogram_equalization
 
@@ -85,20 +85,40 @@ class Indexes:
             # num_bins = int(math.ceil(np.nanmax(raster) - np.nanmin(raster)))
             num_bins = 30
 
-            fig, ax = plt.subplots()
+            hist, bin_edges = np.histogram(cleaned_up_raster, bins=512)
+            max_hist_value = np.max(hist)
+
+            self.logger.info('Total from hist={}'.format(np.sum(hist)))
+
+            #fig, ax = plt.subplots()
 
             # The histogram of the data
-            n, bins, patches = ax.hist(cleaned_up_raster, bins=50, density=False, histtype='step')
+            #n, bins, patches = ax.hist(cleaned_up_raster, bins=50, density=False, histtype='step')
 
             # Add a 'best fit' line
-            y = norm.pdf(bins, mu, sigma)
-            ax.plot(bins, y, '--')
-            ax.set_xlabel('Pixel Value')
-            ax.set_ylabel('Frequency')
-            ax.set_title('Raster Histogram')
+            #y = norm.pdf(bins, mu, sigma)
+            #ax.plot(bins, y, '--')
+            #ax.set_xlabel('Pixel Value')
+            #ax.set_ylabel('Frequency')
+            #ax.set_title('Raster Histogram')
 
             # Tweak spacing to prevent clipping of y label
-            fig.tight_layout()
+            #fig.tight_layout()
+
+            points_for_spline = np.linspace(bin_edges.min(), bin_edges.max(), 512)
+
+            spl = make_interp_spline(bin_edges[:-1], hist, k=3)  # BSpline object
+            power_smooth = spl(points_for_spline)
+
+            # plt.plot(points_for_spline, power_smooth)
+            plt.plot(bin_edges[:-1], hist)
+
+            #plt.hist(cleaned_up_raster, bins=256, histtype='step')  # arguments are passed to np.histogram
+            plt.xlabel('Pixel Value')
+            plt.xticks(np.linspace(bin_edges.min(), bin_edges.max() + 1, num=10))
+            plt.ylabel('Frequency')
+            plt.title('Raster Histogram')
+            #plt.plot(points_for_spline, power_smooth)
             plt.show()
 
 

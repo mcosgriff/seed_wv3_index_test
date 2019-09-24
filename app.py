@@ -36,7 +36,7 @@ def run(args: argparse.Namespace) -> None:
             indexed_raster, stretched_raster = index.process_index()
 
             if stretched_raster.size > 0:
-                # index.build_histogram(raster=stretched_raster)
+                index.build_histogram(raster=stretched_raster)
                 saved_to = index.save_output(raster=stretched_raster)
 
                 logging.info('Processed file saved to {}'.format(saved_to))
