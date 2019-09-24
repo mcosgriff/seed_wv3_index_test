@@ -1,11 +1,44 @@
-from algorithms import Index, process_image
 import argparse
 import logging
+from enum import Enum, auto
+
+from indexes import NormalizedDifferentialVegetation, BuiltUp, NormalizedDifferentialVegetationRedEdge, Polymer1, \
+    Polymer2, Soil, WorldViewWater
+
+
+class Index(Enum):
+    NDVI = auto()
+    WORLD_VIEW_WATER = auto()
+    POLYMER_1 = auto()
+    POLYMER_2 = auto()
+    SOIL = auto()
+    BUILT_UP = auto()
+    NDVI_RE = auto()
 
 
 def run(args: argparse.Namespace) -> None:
-    output = process_image(Index[args.index], args.image_path)
-    logging.info('Processed file saved to {}'.format(output))
+    index = None
+    which_algorithm = Index[args.index]
+
+    if which_algorithm == Index.NDVI:
+        index = NormalizedDifferentialVegetation(args.image_path)
+    elif which_algorithm == Index.WORLD_VIEW_WATER:
+        index = WorldViewWater(args.image_path)
+    elif which_algorithm == Index.POLYMER_1:
+        index = Polymer1(args.image_path)
+    elif which_algorithm == Index.POLYMER_2:
+        index = Polymer2(args.image_path)
+    elif which_algorithm == Index.SOIL:
+        index = Soil(args.image_path)
+    elif which_algorithm == Index.BUILT_UP:
+        index = BuiltUp(args.image_path)
+    elif which_algorithm == Index.NDVI_RE:
+        index = NormalizedDifferentialVegetationRedEdge(args.image_path)
+
+    if index:
+        with index:
+            output = index.process_index()
+            logging.info('Processed file saved to {}'.format(output))
 
 
 def build_cmd_line_args() -> argparse.Namespace:

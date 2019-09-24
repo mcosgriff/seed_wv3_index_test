@@ -148,7 +148,7 @@ class BuiltUp(Indexes):
 
 class NormalizedDifferentialVegetation(Indexes):
     def __init__(self, raster_path: str):
-        Indexes.__init__(self, raster_path, '')
+        return Indexes.__init__(self, raster_path, 'ndvi')
 
     def which_bands_required(self) -> list:
         return [BandTable.RED, BandTable.NEAR_INFRARED_1]
