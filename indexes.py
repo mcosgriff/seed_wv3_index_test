@@ -79,47 +79,19 @@ class Indexes:
             cleaned_up_raster = cleaned_up_raster[~np.isnan(cleaned_up_raster)]
             self.logger.info('Raster with NaN removed={}'.format(cleaned_up_raster.shape))
 
-            mu = np.mean(cleaned_up_raster)
-            sigma = np.std(cleaned_up_raster)
-
-            # num_bins = int(math.ceil(np.nanmax(raster) - np.nanmin(raster)))
-            num_bins = 30
-
             hist, bin_edges = np.histogram(cleaned_up_raster, bins=512)
-            max_hist_value = np.max(hist)
 
-            self.logger.info('Total from hist={}'.format(np.sum(hist)))
+            plot_path = os.path.splitext(self.raster_path)[0] + '_{}.png'.format(self.index_name)
 
-            #fig, ax = plt.subplots()
-
-            # The histogram of the data
-            #n, bins, patches = ax.hist(cleaned_up_raster, bins=50, density=False, histtype='step')
-
-            # Add a 'best fit' line
-            #y = norm.pdf(bins, mu, sigma)
-            #ax.plot(bins, y, '--')
-            #ax.set_xlabel('Pixel Value')
-            #ax.set_ylabel('Frequency')
-            #ax.set_title('Raster Histogram')
-
-            # Tweak spacing to prevent clipping of y label
-            #fig.tight_layout()
-
-            points_for_spline = np.linspace(bin_edges.min(), bin_edges.max(), 512)
-
-            spl = make_interp_spline(bin_edges[:-1], hist, k=3)  # BSpline object
-            power_smooth = spl(points_for_spline)
-
-            # plt.plot(points_for_spline, power_smooth)
-            plt.plot(bin_edges[:-1], hist)
-
-            #plt.hist(cleaned_up_raster, bins=256, histtype='step')  # arguments are passed to np.histogram
             plt.xlabel('Pixel Value')
-            plt.xticks(np.linspace(bin_edges.min(), bin_edges.max() + 1, num=10))
+            plt.xticks(np.arange(np.around(bin_edges.min()), np.around(bin_edges.max()) + 1, 1))
             plt.ylabel('Frequency')
+            plt.minorticks_on()
             plt.title('Raster Histogram')
-            #plt.plot(points_for_spline, power_smooth)
-            plt.show()
+            plt.plot(bin_edges[:-1], hist)
+            plt.savefig(plot_path, bbox_inches='tight', dpi=96)
+
+            return plot_path
 
 
 class Polymer1(Indexes):

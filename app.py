@@ -1,7 +1,7 @@
 import argparse
 import logging
-from enums import Index, StretchTypes
 
+from enums import Index, StretchTypes
 from indexes import NormalizedDifferentialVegetation, BuiltUp, NormalizedDifferentialVegetationRedEdge, Polymer1, \
     Polymer2, Soil, WorldViewWater, WV3Carbonate, AIOHGroupContent, AluniteKaolinite
 
@@ -36,10 +36,11 @@ def run(args: argparse.Namespace) -> None:
             indexed_raster, stretched_raster = index.process_index()
 
             if stretched_raster.size > 0:
-                index.build_histogram(raster=stretched_raster)
+                histogram_path = index.build_histogram(raster=stretched_raster)
                 saved_to = index.save_output(raster=stretched_raster)
 
-                logging.info('Processed file saved to {}'.format(saved_to))
+                logging.info('Indexed raster saved to {} and histogram of that raster saved to '.format(saved_to,
+                                                                                                        histogram_path))
 
 
 def build_cmd_line_args() -> argparse.Namespace:
