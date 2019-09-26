@@ -1,136 +1,85 @@
 {
   "seedVersion": "1.0.0",
   "job": {
-    "name": "my-job",
-    "jobVersion": "1.0.0",
+    "name": "wv3-image-index-job",
+    "jobVersion": "0.0.1",
     "packageVersion": "1.0.0",
-    "title": "My first job",
-    "description": "Reads an HDF5 file and outputs two png images, a CSV and manifest containing cell_count",
-    "tags": [
-      "hdf5",
-      "png",
-      "csv",
-      "image processing"
-    ],
+    "title": "WV3 16 band index",
+    "description": "Perform various indexing on 16 band tiff and save output along with histogram",
     "maintainer": {
-      "name": "John Doe",
-      "organization": "E-corp",
-      "email": "jdoe@example.com",
-      "url": "http://www.example.com",
-      "phone": "666-555-4321"
+      "name": "Matthew Cosgriff",
+      "email": "mcosgrif@ball.com"
     },
-    "timeout": 3600,
+    "timeout": 10,
+    "resources": {
+      "scalar": [
+        {
+          "name": "cpus",
+          "value": 1.0
+        },
+        {
+          "name": "mem",
+          "value": 8192.0
+        },
+        {
+          "name": "disk",
+          "value": 1.0,
+          "inputMultiplier": 1.0
+        },
+        {
+          "name": "sharedMem",
+          "value": 16384.0
+        }
+      ]
+    },
     "interface": {
-      "command": "${INPUT_FILE} ${OUTPUT_DIR} ${VERSION}",
+      "command": "${TIFF_FILE} ${OUTPUT_DIR}",
       "inputs": {
         "files": [
           {
-            "name": "INPUT_FILE",
+            "name": "TIFF_FILE",
             "required": true,
             "mediaTypes": [
-              "image/x-hdf5-image"
+              "image/tiff"
             ],
-            "partial": true
-          }
-        ],
-        "json": [
-          {
-            "name": "INPUT_JSON",
-            "type": "string",
-            "required": true
+            "multiple": false,
+            "partial": false
           }
         ]
       },
       "outputs": {
         "files": [
           {
-            "name": "output_file_pngs",
+            "name": "INDEXED_TIFF_FILE",
+            "mediaType": "image/tiff",
+            "pattern": "*_processed.tif",
+            "multiple": false,
+            "required": true
+          },
+          {
+            "name": "HISTOGRAM_OUTPUT_FILE",
             "mediaType": "image/png",
-            "multiple": true,
-            "pattern": "outfile*.png"
-          },
-          {
-            "name": "output_file_csv",
-            "mediaType": "text/csv",
-            "pattern": "outfile*.csv",
-            "required": false
-          }
-        ],
-        "json": [
-          {
-            "name": "cell_count",
-            "key": "cellCount",
-            "type": "integer"
-          },
-          {
-            "name": "dummy",
-            "type": "integer",
-            "required": false
+            "pattern": "*_histogram.png",
+            "multiple": false,
+            "required": true
           }
         ]
-      },
-      "mounts": [
-        {
-          "name": "MOUNT_PATH",
-          "path": "/the/container/path",
-          "mode": "ro"
-        },
-        {
-          "name": "WRITE_PATH",
-          "path": "/write",
-          "mode": "rw"
-        }
-      ],
-      "settings": [
-        {
-          "name": "VERSION",
-          "secret": false
-        },
-        {
-          "name": "DB_HOST",
-          "secret": false
-        },
-        {
-          "name": "DB_PASS",
-          "secret": true
-        }
-      ]
-    },
-    "resources": {
-      "scalar": [
-        {
-          "name": "cpus",
-          "value": 1
-        },
-        {
-          "name": "mem",
-          "value": 1024
-        },
-        {
-          "name": "sharedMem",
-          "value": 1024
-        },
-        {
-          "name": "disk",
-          "value": 1000,
-          "inputMultiplier": 4
-        }
-      ]
+      }
     },
     "errors": [
       {
         "code": 1,
-        "name": "error-name-one",
-        "title": "Error Name",
-        "description": "Error Description",
+        "name": "data-error",
+        "title": "No Input Provided",
+        "description": "No input files have been given. No data to add.",
         "category": "data"
       },
       {
-        "code": 2,
-        "name": "error-name-two",
-        "title": "Error Name",
-        "description": "Error Description",
-        "category": "job"
+        "code": 3,
+        "name": "data-error",
+        "title": "Output Directory Doesn't Exist",
+        "description": "The output directory does not exisit or is not a directory",
+        "category": "data"
       }
     ]
   }

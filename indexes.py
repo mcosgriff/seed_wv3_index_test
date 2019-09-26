@@ -1,24 +1,23 @@
-import math
+import logging
 import os.path
 
 import matplotlib.pyplot as plt
 import numpy as np
 import rasterio
 from rasterio.enums import Compression
-from scipy.stats import norm
-import logging
-from scipy.interpolate import make_interp_spline, BSpline
+
 from enums import BandTable, StretchTypes
 from stretch_types import linear_percent_stretch, image_histogram_equalization
 
 
 class Indexes:
-    def __init__(self, raster_path: str, index_name: str, stretch_type=StretchTypes.NONE):
+    def __init__(self, raster_path: str, output_directory: str, index_name: str, stretch_type=StretchTypes.NONE):
         self.index_name = index_name
         self.raster_path = raster_path
         self.processed_raster = None
         self.stretch_type = stretch_type
         self.logger = logging.getLogger('wv3_index_processing')
+        self.output_directory = output_directory
 
         np.seterr(divide='ignore', invalid='ignore')
 
@@ -49,8 +48,10 @@ class Indexes:
             raster = self.processed_raster
 
         if raster.size > 0:
-            with rasterio.open(os.path.splitext(self.raster_path)[0] + '_{}.tif'.format(self.index_name), mode='w',
-                               **self.build_output_profile()) as output:
+            filename_without_extension = os.path.splitext(os.path.basename(self.raster_path))[0]
+            output_path = os.path.join(self.output_directory,
+                                       filename_without_extension + '_{}_{}.tif'.format(self.index_name, "processed"))
+            with rasterio.open(output_path, mode='w', **self.build_output_profile()) as output:
                 output.write(self.processed_raster, 1)
 
                 return output.name
@@ -81,7 +82,9 @@ class Indexes:
 
             hist, bin_edges = np.histogram(cleaned_up_raster, bins=512)
 
-            plot_path = os.path.splitext(self.raster_path)[0] + '_{}.png'.format(self.index_name)
+            filename_without_extension = os.path.splitext(os.path.basename(self.raster_path))[0]
+            plot_path = os.path.join(self.output_directory,
+                                     filename_without_extension + '_{}_{}.png'.format(self.index_name, "histogram"))
 
             plt.xlabel('Pixel Value')
             plt.xticks(np.arange(np.around(bin_edges.min()), np.around(bin_edges.max()) + 1, 1))
@@ -95,8 +98,8 @@ class Indexes:
 
 
 class Polymer1(Indexes):
-    def __init__(self, raster_path: str, stretch_type=StretchTypes.NONE):
-        Indexes.__init__(self, raster_path, 'polymer_1_index', stretch_type)
+    def __init__(self, raster_path: str, output_directory: str, stretch_type=StretchTypes.NONE):
+        Indexes.__init__(self, raster_path, output_directory, 'polymer_1_index', stretch_type)
 
     def which_bands_required(self) -> list:
         return [BandTable.SWIR_2, BandTable.SWIR_4, BandTable.SWIR_5, BandTable.SWIR_8]
@@ -107,8 +110,6 @@ class Polymer1(Indexes):
         band_13 = self.get_band_pixel_values(BandTable.SWIR_5)
         band_16 = self.get_band_pixel_values(BandTable.SWIR_8)
 
-        np.seterr(divide='ignore', invalid='ignore')
-
         temp_ds_1 = np.where(band_12 > 0, np.divide(band_10, band_12), np.nan)
         temp_ds_2 = np.where(band_16 > 0, np.divide(band_13, band_16), np.nan)
 
@@ -116,12 +117,12 @@ class Polymer1(Indexes):
 
         self.processed_raster = np.where(check, temp_ds_1 + temp_ds_2, np.nan)
 
-        return self.processed_raster, self.processed_raster, self.perform_stretch()
+        return self.processed_raster, self.perform_stretch()
 
 
 class Polymer2(Indexes):
-    def __init__(self, raster_path: str, stretch_type=StretchTypes.NONE):
-        Indexes.__init__(self, raster_path, 'polymer_2_index', stretch_type)
+    def __init__(self, raster_path: str, output_directory: str, stretch_type=StretchTypes.NONE):
+        Indexes.__init__(self, raster_path, output_directory, 'polymer_2_index', stretch_type)
 
     def which_bands_required(self) -> list:
         return [BandTable.SWIR_2, BandTable.SWIR_3, BandTable.SWIR_6, BandTable.SWIR_8]
@@ -138,8 +139,8 @@ class Polymer2(Indexes):
 
 
 class Soil(Indexes):
-    def __init__(self, raster_path: str, stretch_type=StretchTypes.NONE):
-        Indexes.__init__(self, raster_path, 'soil_index', stretch_type)
+    def __init__(self, raster_path: str, output_directory: str, stretch_type=StretchTypes.NONE):
+        Indexes.__init__(self, raster_path, output_directory, 'soil_index', stretch_type)
 
     def which_bands_required(self) -> list:
         return [BandTable.GREEN, BandTable.YELLOW]
@@ -154,8 +155,8 @@ class Soil(Indexes):
 
 
 class BuiltUp(Indexes):
-    def __init__(self, raster_path: str, stretch_type=StretchTypes.NONE):
-        Indexes.__init__(self, raster_path, 'built_up_index', stretch_type)
+    def __init__(self, raster_path: str, output_directory: str, stretch_type=StretchTypes.NONE):
+        Indexes.__init__(self, raster_path, output_directory, 'built_up_index', stretch_type)
 
     def which_bands_required(self) -> list:
         return [BandTable.COASTAL, BandTable.RED_EDGE]
@@ -173,8 +174,8 @@ class BuiltUp(Indexes):
 
 
 class NormalizedDifferentialVegetation(Indexes):
-    def __init__(self, raster_path: str, stretch_type=StretchTypes.NONE):
-        Indexes.__init__(self, raster_path, 'ndvi', stretch_type)
+    def __init__(self, raster_path: str, output_directory: str, stretch_type=StretchTypes.NONE):
+        Indexes.__init__(self, raster_path, output_directory, 'ndvi', stretch_type)
 
     def which_bands_required(self) -> list:
         return [BandTable.RED, BandTable.NEAR_INFRARED_1]
@@ -193,8 +194,8 @@ class NormalizedDifferentialVegetation(Indexes):
 
 
 class NormalizedDifferentialVegetationRedEdge(Indexes):
-    def __init__(self, raster_path: str, stretch_type=StretchTypes.NONE):
-        Indexes.__init__(self, raster_path, 'ndvi_re', stretch_type)
+    def __init__(self, raster_path: str, output_directory: str, stretch_type=StretchTypes.NONE):
+        Indexes.__init__(self, raster_path, output_directory, 'ndvi_re', stretch_type)
 
     def which_bands_required(self) -> list:
         return [BandTable.RED, BandTable.RED_EDGE]
@@ -213,8 +214,8 @@ class NormalizedDifferentialVegetationRedEdge(Indexes):
 
 
 class WorldViewWater(Indexes):
-    def __init__(self, raster_path: str, stretch_type=StretchTypes.NONE):
-        Indexes.__init__(self, raster_path, 'wv_water_index', stretch_type)
+    def __init__(self, raster_path: str, output_directory: str, stretch_type=StretchTypes.NONE):
+        Indexes.__init__(self, raster_path, output_directory, 'wv_water_index', stretch_type)
 
     def which_bands_required(self) -> list:
         return [BandTable.COASTAL, BandTable.NEAR_INFRARED_2]
@@ -230,8 +231,8 @@ class WorldViewWater(Indexes):
 
 
 class WV3Carbonate(Indexes):
-    def __init__(self, raster_path: str, stretch_type=StretchTypes.NONE):
-        Indexes.__init__(self, raster_path, 'wv3_carbonate', stretch_type)
+    def __init__(self, raster_path: str, output_directory: str, stretch_type=StretchTypes.NONE):
+        Indexes.__init__(self, raster_path, output_directory, 'wv3_carbonate', stretch_type)
 
     def which_bands_required(self) -> list:
         return [BandTable.SWIR_6, BandTable.SWIR_7, BandTable.SWIR_8]
@@ -247,8 +248,8 @@ class WV3Carbonate(Indexes):
 
 
 class AluniteKaolinite(Indexes):
-    def __init__(self, raster_path: str, stretch_type=StretchTypes.NONE):
-        Indexes.__init__(self, raster_path, 'alunite_kaolinite', stretch_type)
+    def __init__(self, raster_path: str, output_directory: str, stretch_type=StretchTypes.NONE):
+        Indexes.__init__(self, raster_path, output_directory, 'alunite_kaolinite', stretch_type)
 
     def which_bands_required(self) -> list:
         return [BandTable.SWIR_3, BandTable.SWIR_5, BandTable.SWIR_6]
@@ -264,8 +265,8 @@ class AluniteKaolinite(Indexes):
 
 
 class AIOHGroupContent(Indexes):
-    def __init__(self, raster_path: str, stretch_type=StretchTypes.NONE):
-        Indexes.__init__(self, raster_path, 'aioh_group_content', stretch_type)
+    def __init__(self, raster_path: str, output_directory: str, stretch_type=StretchTypes.NONE):
+        Indexes.__init__(self, raster_path, output_directory, 'aioh_group_content', stretch_type)
 
     def which_bands_required(self) -> list:
         return [BandTable.SWIR_5, BandTable.SWIR_6, BandTable.SWIR_7]
